@@ -133,7 +133,7 @@ def train(train_data_path, lmbda, lr, batch_size, checkpoint_dir, weight_path, i
     sch.step()
 
     
-    if (epoch % 100 == 99):
+    if (epoch % 20 == 19):
 
       print('[INFO] Saving')
       if not os.path.isdir(checkpoint_dir):

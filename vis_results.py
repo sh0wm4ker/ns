@@ -9,6 +9,14 @@ import os
 import math
 import copy
 
+# ================= 中文支持设置 =================
+# 设置中文字体，防止中文显示乱码
+# Windows 常用: 'SimHei', 'Microsoft YaHei'
+# Linux/Mac 常用: 'Arial Unicode MS', 'PingFang SC'
+plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
+plt.rcParams['axes.unicode_minus'] = False    # 用来正常显示负号
+# ===============================================
+
 # 确保能导入 Net
 try:
     from model.net import Net
@@ -17,9 +25,10 @@ except ImportError:
     exit()
 
 # ================= 配置 =================
-IMG_PATH = r"val_pic\agricultural00.tif"
-CKPT_PATH = r"checkpoint_ucm/0099.ckpt"
-SAVE_NAME = "vis_adaptive_comparison.png"
+# 路径保持不变
+IMG_PATH = r"val_pic\agricultural21.tif"
+CKPT_PATH = r"checkpoint_ucm/0199.ckpt"
+SAVE_NAME = "epoch199_vis_adaptive_chinese.png"
 
 # 微调参数
 LAMBDA = 0.01
@@ -28,8 +37,6 @@ LR = 1e-3
 
 # 局部放大区域 (x, y, w, h)
 CROP_BOX = (50, 50, 150, 150)
-
-
 # =======================================
 
 def calculate_psnr(img1, img2):
@@ -40,36 +47,37 @@ def calculate_psnr(img1, img2):
 
 
 def run_inference(net, x_input):
-    """执行一次标准推理 (严格遵循 model.net 的 forward 逻辑)"""
+    """执行一次标准推理"""
     with torch.no_grad():
         # 1. 编码
         z3 = net.a_model(x_input)
         z3_syntax = z3[:, :net.M, :, :]
         z3_content = z3[:, net.M:, :, :]
 
-        # 2. 量化 (Inference 时必须量化)
+        # 2. 应用 syntax_model 进行降维
+        z3_syntax = net.syntax_model(z3_syntax)
+
+        # 3. 量化
         z3_syntax_hat = torch.round(z3_syntax)
         z3_content_hat = torch.round(z3_content)
 
-        # 3. 生成权重 & 解码
-        # 【修正】直接传入 4D 张量，不要做 torch.mean
+        # 4. 生成权重 & 解码
         conv_weights = net.conv_weights_gen(z3_syntax_hat)
 
         x_tilde = net.s_model(z3_content_hat)
         x_tilde_bf = net.batch_conv(conv_weights, x_tilde)
 
-        # 4. 后处理 (Post-Processing)
-        # 如果训练了 HAN (Stage 2)，这里应该开启。Stage 1 关闭。
+        # 5. 后处理 (如果模型是 Stage2 训练的)
         if net.post_processing:
             x_tilde_bf = net.han_head(x_tilde_bf)
 
-        # 5. 反归一化
+        # 6. 反归一化
         x_recon = torch.clamp((x_tilde_bf + 1) / 2.0, 0, 1)
     return x_recon
 
 
 def run_adaptive_finetune(net, x_input):
-    """在线适应 (参考 eval.py 的 pre-processing 逻辑)"""
+    """在线适应 (Online Adaptation)"""
     print(f"正在进行在线自适应微调 ({TUNE_ITER} 次迭代)...")
 
     # 1. 冻结除编码器以外的所有参数
@@ -80,32 +88,31 @@ def run_adaptive_finetune(net, x_input):
 
     optimizer = optim.Adam(net.a_model.parameters(), lr=LR)
 
-    # 临时开启训练模式 (为了梯度传播)
     net.train()
 
     for i in range(TUNE_ITER):
         optimizer.zero_grad()
 
-        # 前向传播 (不使用 round，保留梯度)
+        # 前向传播
         z3 = net.a_model(x_input)
         z3_syntax = z3[:, :net.M, :, :]
         z3_content = z3[:, net.M:, :, :]
 
-        # 【修正】直接传入 4D 张量
-        # 注意：这里传入未量化的 z3_syntax 以便梯度回传到 a_model
+        # 训练时也必须经过 syntax_model
+        z3_syntax = net.syntax_model(z3_syntax)
+
+        # 传入未量化的特征以保留梯度
         conv_weights = net.conv_weights_gen(z3_syntax)
 
         x_tilde = net.s_model(z3_content)
         x_tilde_bf = net.batch_conv(conv_weights, x_tilde)
 
-        # 简化版重建 (跳过 post_processing 以节省显存/时间，且主要优化的是编码器特征)
+        # 简化版重建 (只优化MSE)
         x_recon_train = (x_tilde_bf + 1) / 2.0
 
-        # 计算 Loss (仅优化失真 MSE)
         target = (x_input + 1) / 2.0
         mse_loss = torch.mean((x_recon_train - target) ** 2)
 
-        # 放大 Loss 避免梯度过小
         loss = mse_loss * 255 * 255
 
         loss.backward()
@@ -114,7 +121,6 @@ def run_adaptive_finetune(net, x_input):
         if (i + 1) % 20 == 0:
             print(f"  Iter {i + 1}/{TUNE_ITER}, Loss: {loss.item():.4f}")
 
-    # 微调结束，切回 eval 模式进行最终推理
     net.eval()
     return run_inference(net, x_input)
 
@@ -130,8 +136,6 @@ def generate_vis():
     x_input = x * 2.0 - 1.0
 
     # 2. 加载模型
-    # 注意：这里 post_processing设为False，因为你的checkpoint可能是Stage1的
-    # 如果是Stage2模型，请改为True
     net = Net((1, 256, 256, 3), (1, 256, 256, 3), is_high=False, post_processing=False).cuda()
 
     try:
@@ -142,7 +146,6 @@ def generate_vis():
         return
 
     # 3. [阶段 A] 标准推理
-    # 备份模型，防止微调影响对比
     net_standard = copy.deepcopy(net)
     x_recon_std = run_inference(net_standard, x_input)
 
@@ -165,7 +168,7 @@ def generate_vis():
 
     # (A) GT
     axes[0].imshow(img_gt)
-    axes[0].set_title("Ground Truth", fontsize=14, fontweight='bold')
+    axes[0].set_title("原始遥感影像\n(Ground Truth)", fontsize=14, fontweight='bold')
     axes[0].axis('off')
     rect0 = patches.Rectangle((CROP_BOX[0], CROP_BOX[1]), CROP_BOX[2], CROP_BOX[3], linewidth=2, edgecolor='red',
                               facecolor='none')
@@ -173,7 +176,7 @@ def generate_vis():
 
     # (B) Standard
     axes[1].imshow(img_std)
-    axes[1].set_title(f"Standard Recon\nPSNR: {psnr_std:.2f} dB", fontsize=14)
+    axes[1].set_title(f"基础重建结果\nPSNR: {psnr_std:.2f} dB", fontsize=14)
     axes[1].axis('off')
     rect1 = patches.Rectangle((CROP_BOX[0], CROP_BOX[1]), CROP_BOX[2], CROP_BOX[3], linewidth=2, edgecolor='red',
                               facecolor='none')
@@ -182,7 +185,7 @@ def generate_vis():
     # (C) Adaptive
     axes[2].imshow(img_adt)
     title_color = 'darkgreen' if psnr_adt > psnr_std else 'black'
-    axes[2].set_title(f"Adaptive Recon (Ours)\nPSNR: {psnr_adt:.2f} dB", fontsize=14, color=title_color,
+    axes[2].set_title(f"自适应重建结果 (Ours)\nPSNR: {psnr_adt:.2f} dB", fontsize=14, color=title_color,
                       fontweight='bold')
     axes[2].axis('off')
     rect2 = patches.Rectangle((CROP_BOX[0], CROP_BOX[1]), CROP_BOX[2], CROP_BOX[3], linewidth=2, edgecolor='red',
@@ -191,7 +194,7 @@ def generate_vis():
 
     # (D) Error Map
     im = axes[3].imshow(diff_norm, cmap='jet', vmin=0, vmax=0.5)
-    axes[3].set_title("Error Map (Adaptive)", fontsize=14)
+    axes[3].set_title("重建误差热力图\n(Error Map)", fontsize=14)
     axes[3].axis('off')
     plt.colorbar(im, ax=axes[3], fraction=0.046, pad=0.04)
 
@@ -203,6 +206,5 @@ def generate_vis():
 
 
 if __name__ == "__main__":
-    # 解决 OpenMP 冲突
     os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
     generate_vis()
