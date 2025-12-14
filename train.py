@@ -59,7 +59,7 @@ def train(train_data_path, lmbda, lr, batch_size, checkpoint_dir, weight_path, i
   training_loader = torch.utils.data.DataLoader(train_data,
                                     batch_size=batch_size,
                                     shuffle=True,
-                                    num_workers=8)
+                                    num_workers=0)
 
   net = Net((batch_size,256,256,3), (1,256,256,3), is_high, post_processing).cuda()
 
