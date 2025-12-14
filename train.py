@@ -52,7 +52,7 @@ def quantize_image(img):
 def train(train_data_path, lmbda, lr, batch_size, checkpoint_dir, weight_path, is_high, post_processing):
 
   train_data = DIV2KDataset(train_data_path,transform=tv.transforms.Compose([
-      tv.transforms.RandomCrop(256),
+      tv.transforms.Resize((256, 256)),
       Preprocess()
     ]))
   
