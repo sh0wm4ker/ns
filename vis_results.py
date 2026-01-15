@@ -27,8 +27,8 @@ except ImportError:
 # ================= 配置 =================
 # 路径保持不变
 IMG_PATH = r"val_pic\agricultural21.tif"
-CKPT_PATH = r"checkpoint_ucm/0279.ckpt"
-SAVE_NAME = "epoch478_vis_adaptive_chinese.png"
+CKPT_PATH = r"checkpoint_ucm_479/0379.ckpt"
+SAVE_NAME = "epoch857_vis_adaptive_chinese.png"
 
 # 微调参数
 LAMBDA = 0.01

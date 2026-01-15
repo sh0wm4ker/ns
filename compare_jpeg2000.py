@@ -24,7 +24,7 @@ except ImportError:
 IMG_PATH = "val_pic/agricultural21.tif"
 
 # 2. 你的模型权重路径 (已根据你的日志自动更新为 0259)
-CKPT_PATH = "checkpoint_ucm/0279.ckpt"
+CKPT_PATH = "checkpoint_ucm_479/0379.ckpt"
 
 # 3. JPEG2000 测试的压缩比率列表
 JP2_RATIOS = [200, 150, 100, 80, 60, 40, 30, 20, 10]
@@ -152,7 +152,7 @@ def main():
     jp2_psnrs = [x[1] for x in jp2_results]
 
     plt.plot(jp2_bpps, jp2_psnrs, 'b-o', linewidth=2, label='JPEG2000 (Baseline)')
-    plt.plot(n_bpp, n_psnr, 'r*', markersize=18, label='Neural Syntax (Ours)')
+    plt.plot(n_bpp, n_psnr, 'r*', markersize=18, label='Ours')
 
     plt.annotate(f'Ours\n({n_bpp:.2f}, {n_psnr:.2f})',
                  xy=(n_bpp, n_psnr), xytext=(n_bpp + 0.05, n_psnr - 1),
