@@ -26,9 +26,15 @@ except ImportError:
 
 # ================= 配置 =================
 # 路径保持不变
-IMG_PATH = r"val_pic\agricultural21.tif"
-CKPT_PATH = r"checkpoint_ucm_479/0379.ckpt"
-SAVE_NAME = "epoch857_vis_adaptive_chinese.png"
+# 1. 改为您的验证集图片路径 (确保文件存在)
+IMG_PATH = r"/home/ns/val_pic/val.jpg"
+
+# 2. 改为您刚刚训练好的最新模型权重 (根据日志是 4000 轮左右)
+#    请检查您的保存目录，找到最大的那个 .ckpt 文件
+CKPT_PATH = r"/home/ns/saves/4099.ckpt"  # 或者是 4099.ckpt
+
+# 3. 输出文件名
+SAVE_NAME = "/mnt/result_epoch4000_vis.png"
 
 # 微调参数
 LAMBDA = 0.01

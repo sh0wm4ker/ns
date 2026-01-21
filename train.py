@@ -173,8 +173,16 @@ def train(train_data_path, lmbda, lr, batch_size, checkpoint_dir, weight_path, i
                 os.mkdir(checkpoint_dir)
             torch.save(net.module.state_dict(), '%s/%04d.ckpt' % (checkpoint_dir, epoch))
 
-        with open(os.path.join(checkpoint_dir, 'train_log.txt'), 'a') as fd:
-            fd.write('[Epoch %04d] Train Loss: %.4f Val Loss: %.4f \n' % (epoch, avg_train_loss, avg_val_loss))
+        log_dir = "/mnt/log"
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir, exist_ok=True)
+
+        with open(os.path.join(log_dir, 'train_log.txt'), 'a') as fd:
+            fd.write('[Epoch %04d] Train Loss: %.4f (Bpp: %.4f MSE: %.4f) | Val Loss: %.4f (Bpp: %.4f MSE: %.4f)\n' % (
+                epoch,
+                avg_train_loss, avg_train_bpp, avg_train_mse,
+                avg_val_loss, avg_val_bpp, avg_val_mse
+            ))
 
 
 if __name__ == "__main__":
