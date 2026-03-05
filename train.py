@@ -45,7 +45,7 @@ class Preprocess(object):
         return img.transpose((2, 0, 1))
 
 
-def train(train_data_path, lmbda, lr, batch_size, checkpoint_dir, weight_path, is_high, post_processing):
+def train(train_data_path, lmbda, lr, batch_size, checkpoint_dir, weight_path, is_high, post_processing, enc_ks):
     # === 核心修改在这里 ===
     # 加入 Resize(256)，确保图片最小边至少是 256，解决 251<256 的报错
     full_dataset = DIV2KDataset(train_data_path, transform=tv.transforms.Compose([
@@ -68,8 +68,7 @@ def train(train_data_path, lmbda, lr, batch_size, checkpoint_dir, weight_path, i
     training_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=16, pin_memory=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=16, pin_memory=True)
 
-    net = Net((batch_size, 256, 256, 3), (1, 256, 256, 3), is_high, post_processing).cuda()
-
+    net = Net((batch_size, 256, 256, 3), (1, 256, 256, 3), is_high, post_processing, enc_ks=enc_ks).cuda()
     def weight_init(m):
         if isinstance(m, nn.Linear):
             nn.init.xavier_uniform_(m.weight)
@@ -196,7 +195,14 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning Rate")
     parser.add_argument("--batch_size", type=int, default=8, help="Batch Size")
 
+    # [新增] 用于控制编码器卷积核大小的参数
+    parser.add_argument("--enc_ks", type=str, default="5,5,5,5",
+                        help="Kernel sizes for the encoder stages (e.g., 7,5,3,3)")
+
     args = parser.parse_args()
 
+    # [新增] 将字符串 "7,5,3,3" 转换为元组 (7, 5, 3, 3)
+    enc_ks_tuple = tuple(map(int, args.enc_ks.split(',')))
+
     train(args.train_data_path, args.lmbda, args.lr, args.batch_size, args.checkpoint_dir, args.weight_path, args.high,
-          args.post_processing)
+          args.post_processing, enc_ks_tuple)

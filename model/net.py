@@ -417,7 +417,8 @@ bypass_round = BypassRound.apply
 
 
 class Net(nn.Module):
-    def __init__(self, train_size, test_size, is_high, post_processing):
+    # [修改] 增加 enc_ks=(5,5,5,5) 默认参数
+    def __init__(self, train_size, test_size, is_high, post_processing, enc_ks=(5, 5, 5, 5)):
         super(Net, self).__init__()
         self.train_size = train_size
         self.test_size = test_size
@@ -434,7 +435,8 @@ class Net(nn.Module):
         self.M = M
         self.N = N
 
-        self.a_model = analysisTransformModel(3, [N, N, N, N])
+        # [修改] 将参数传递给 analysisTransformModel
+        self.a_model = analysisTransformModel(3, [N, N, N, N], ks=enc_ks)
         self.s_model = synthesisTransformModel(N - M, [N, N, N, M])
 
         self.syntax_model = Syntax_Model(M, M)
