@@ -72,8 +72,9 @@ class DepthwiseSeparableTransposeConv(nn.Module):
 # [修改] 编码器 (Analysis Transform)
 # ==========================================
 class analysisTransformModel(nn.Module):
-    def __init__(self, in_dim, num_filters, conv_trainable=True):
+    def __init__(self, in_dim, num_filters, conv_trainable=True, ks=(5, 5, 5, 5)):
         super(analysisTransformModel, self).__init__()
+        assert len(ks) == 4
         self.transform = nn.Sequential(
             nn.ZeroPad2d((1, 2, 1, 2)),
             # 第1层：通常保留标准卷积以捕获原始RGB相关性，也可以替换。
