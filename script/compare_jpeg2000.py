@@ -21,7 +21,7 @@ except ImportError:
 
 # ================= 配置区域 =================
 # 1. 待测试的原图路径 (保持不变)
-IMG_PATH = "val_pic/agricultural21.tif"
+IMG_PATH = "../val_pic/agricultural21.tif"
 
 # 2. 你的模型权重路径 (已根据你的日志自动更新为 0259)
 CKPT_PATH = "checkpoint_ucm_479/0379.ckpt"
